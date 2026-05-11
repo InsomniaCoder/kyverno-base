@@ -8,17 +8,37 @@ spec:
       try:
         - apply:
             file: ../policy.yaml
-    - name: 02 - Non-privileged pod should be admitted
+    - name: 02 - Wait for policy to be ready
+      try:
+        - assert:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: disallow-privileged-containers
+              status:
+                conditions:
+                  - reason: Succeeded
+                    status: "True"
+                    type: Ready
+    - name: 03 - Non-privileged pod should be admitted
       try:
         - apply:
             file: valid-pod.yaml
             expect:
               - check:
                   ($error == null): true
-    - name: 03 - Privileged container should be blocked
+    - name: 04 - Privileged container should be blocked
       try:
         - apply:
             file: invalid-privileged.yaml
+            expect:
+              - check:
+                  ($error != null): true
+    - name: 05 - Privileged initContainer should be blocked
+      try:
+        - apply:
+            file: invalid-privileged-init.yaml
             expect:
               - check:
                   ($error != null): true

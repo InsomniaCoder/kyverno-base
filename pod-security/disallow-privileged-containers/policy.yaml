@@ -40,5 +40,10 @@ spec:
                   !has(c.securityContext) ||
                   !has(c.securityContext.privileged) ||
                   c.securityContext.privileged == false
+                )) &&
+                (!has(object.spec.ephemeralContainers) || object.spec.ephemeralContainers.all(c,
+                  !has(c.securityContext) ||
+                  !has(c.securityContext.privileged) ||
+                  c.securityContext.privileged == false
                 ))
               message: "Privileged containers are not allowed. Remove securityContext.privileged or set it to false."
