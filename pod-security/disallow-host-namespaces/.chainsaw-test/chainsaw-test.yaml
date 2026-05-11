@@ -42,3 +42,10 @@ spec:
             expect:
               - check:
                   ($error != null): true
+    - name: 06 - Pod with hostIPC should be blocked
+      try:
+        - apply:
+            file: invalid-host-ipc.yaml
+            expect:
+              - check:
+                  ($error != null): true
