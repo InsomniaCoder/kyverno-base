@@ -1,0 +1,44 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-root-user
+spec:
+  steps:
+    - name: 01 - Apply policy
+      try:
+        - apply:
+            file: ../policy.yaml
+    - name: 02 - Wait for policy to be ready
+      try:
+        - assert:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: disallow-root-user
+              status:
+                conditions:
+                  - reason: Succeeded
+                    status: "True"
+                    type: Ready
+    - name: 03 - Pod with non-root user should be admitted
+      try:
+        - apply:
+            file: valid-pod.yaml
+            expect:
+              - check:
+                  ($error == null): true
+    - name: 04 - Pod running as root (uid 0) should be blocked
+      try:
+        - apply:
+            file: invalid-root-user.yaml
+            expect:
+              - check:
+                  ($error != null): true
+    - name: 05 - Pod without any user context should be blocked
+      try:
+        - apply:
+            file: invalid-no-user-context.yaml
+            expect:
+              - check:
+                  ($error != null): true
