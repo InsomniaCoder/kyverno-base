@@ -1,0 +1,37 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-liveness-probe
+spec:
+  steps:
+    - name: 01 - Apply policy
+      try:
+        - apply:
+            file: ../policy.yaml
+    - name: 02 - Wait for policy to be ready
+      try:
+        - assert:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: require-liveness-probe
+              status:
+                conditions:
+                  - reason: Succeeded
+                    status: "True"
+                    type: Ready
+    - name: 03 - Pod with livenessProbe should be admitted
+      try:
+        - apply:
+            file: valid-pod.yaml
+            expect:
+              - check:
+                  ($error == null): true
+    - name: 04 - Pod without livenessProbe should be blocked
+      try:
+        - apply:
+            file: invalid-no-probe.yaml
+            expect:
+              - check:
+                  ($error != null): true
