@@ -42,3 +42,10 @@ spec:
             expect:
               - check:
                   ($error != null): true
+    - name: 06 - Role with wildcard verb should be blocked
+      try:
+        - apply:
+            file: invalid-role-wildcard-verb.yaml
+            expect:
+              - check:
+                  ($error != null): true
