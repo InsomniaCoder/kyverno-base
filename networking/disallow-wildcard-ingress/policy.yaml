@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-wildcard-ingress
+  annotations:
+    policies.kyverno.io/title: Disallow Wildcard Ingress
+    policies.kyverno.io/category: Networking
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Ingress
+    kyverno.io/kyverno-version: "1.16.2"
+    kyverno.io/kubernetes-version: "1.34"
+    policies.kyverno.io/description: >-
+      Wildcard hostnames in Ingress rules (e.g., *.example.com) can be used to intercept
+      traffic intended for other services in the cluster. This policy disallows Ingress
+      rules whose host contains a wildcard character (*).
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: disallow-wildcard-ingress
+      match:
+        any:
+          - resources:
+              kinds: [Ingress]
+              operations: [CREATE, UPDATE]
+      celPreconditions:
+        - name: has-rules
+          expression: "has(object.spec.rules)"
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                object.spec.rules.all(rule,
+                  !has(rule.host) || !rule.host.contains('*')
+                )
+              message: "Ingress rules must not use wildcard hostnames. Replace '*.example.com' with an explicit hostname."
