@@ -1,0 +1,44 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-latest-image-tag
+spec:
+  steps:
+    - name: 01 - Apply policy
+      try:
+        - apply:
+            file: ../policy.yaml
+    - name: 02 - Wait for policy to be ready
+      try:
+        - assert:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: disallow-latest-image-tag
+              status:
+                conditions:
+                  - reason: Succeeded
+                    status: "True"
+                    type: Ready
+    - name: 03 - Pod with pinned image tag should be admitted
+      try:
+        - apply:
+            file: valid-pod.yaml
+            expect:
+              - check:
+                  ($error == null): true
+    - name: 04 - Pod with latest tag should be blocked
+      try:
+        - apply:
+            file: invalid-latest-tag.yaml
+            expect:
+              - check:
+                  ($error != null): true
+    - name: 05 - Pod with no tag should be blocked
+      try:
+        - apply:
+            file: invalid-no-tag.yaml
+            expect:
+              - check:
+                  ($error != null): true
