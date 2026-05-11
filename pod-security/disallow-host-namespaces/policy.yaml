@@ -1,0 +1,37 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-namespaces
+  annotations:
+    policies.kyverno.io/title: Disallow Host Namespaces
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: "1.16.2"
+    kyverno.io/kubernetes-version: "1.34"
+    policies.kyverno.io/description: >-
+      Host namespaces (hostPID, hostIPC, hostNetwork) allow pods to share the host's
+      process, IPC, and network namespaces, which enables privilege escalation and
+      host compromise. This policy disallows pods from using any host namespace.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: disallow-host-namespaces
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              operations: [CREATE, UPDATE]
+      exclude:
+        any:
+          - resources:
+              namespaces: [kube-system, kyverno]
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                (!has(object.spec.hostPID) || object.spec.hostPID == false) &&
+                (!has(object.spec.hostIPC) || object.spec.hostIPC == false) &&
+                (!has(object.spec.hostNetwork) || object.spec.hostNetwork == false)
+              message: "Pods must not use host namespaces. Remove or set hostPID, hostIPC, and hostNetwork to false."
