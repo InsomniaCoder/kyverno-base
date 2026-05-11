@@ -1,0 +1,44 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-readonly-rootfs
+spec:
+  steps:
+    - name: 01 - Apply policy
+      try:
+        - apply:
+            file: ../policy.yaml
+    - name: 02 - Wait for policy to be ready
+      try:
+        - assert:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: require-readonly-rootfs
+              status:
+                conditions:
+                  - reason: Succeeded
+                    status: "True"
+                    type: Ready
+    - name: 03 - Pod with readOnlyRootFilesystem true should be admitted
+      try:
+        - apply:
+            file: valid-pod.yaml
+            expect:
+              - check:
+                  ($error == null): true
+    - name: 04 - Pod without readOnlyRootFilesystem true should be blocked
+      try:
+        - apply:
+            file: invalid-writable-rootfs.yaml
+            expect:
+              - check:
+                  ($error != null): true
+    - name: 05 - Pod with initContainer missing readOnlyRootFilesystem true should be blocked
+      try:
+        - apply:
+            file: invalid-init-writable.yaml
+            expect:
+              - check:
+                  ($error != null): true
