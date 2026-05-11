@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: valid-pod
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25

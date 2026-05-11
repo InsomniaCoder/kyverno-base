@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-standard-labels
+  annotations:
+    policies.kyverno.io/title: Require Standard Kubernetes Labels
+    policies.kyverno.io/category: Labels
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: "1.16.2"
+    kyverno.io/kubernetes-version: "1.34"
+    policies.kyverno.io/description: >-
+      Standard Kubernetes labels (app.kubernetes.io/name and app.kubernetes.io/version)
+      enable consistent tooling, dashboards, and policy targeting across the cluster.
+      This policy requires all pods to carry both labels with non-empty values.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: require-standard-labels
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              operations: [CREATE, UPDATE]
+      exclude:
+        any:
+          - resources:
+              namespaces: [kube-system, kyverno]
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                has(object.metadata.labels) &&
+                'app.kubernetes.io/name' in object.metadata.labels &&
+                object.metadata.labels['app.kubernetes.io/name'] != '' &&
+                'app.kubernetes.io/version' in object.metadata.labels &&
+                object.metadata.labels['app.kubernetes.io/version'] != ''
+              message: "Pods must have 'app.kubernetes.io/name' and 'app.kubernetes.io/version' labels set to non-empty values."
