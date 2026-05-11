@@ -1,0 +1,44 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-resource-limits
+spec:
+  steps:
+    - name: 01 - Apply policy
+      try:
+        - apply:
+            file: ../policy.yaml
+    - name: 02 - Wait for policy to be ready
+      try:
+        - assert:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: require-resource-limits
+              status:
+                conditions:
+                  - reason: Succeeded
+                    status: "True"
+                    type: Ready
+    - name: 03 - Pod with cpu and memory requests and limits should be admitted
+      try:
+        - apply:
+            file: valid-pod.yaml
+            expect:
+              - check:
+                  ($error == null): true
+    - name: 04 - Pod without resource limits should be blocked
+      try:
+        - apply:
+            file: invalid-no-limits.yaml
+            expect:
+              - check:
+                  ($error != null): true
+    - name: 05 - Pod without resource requests should be blocked
+      try:
+        - apply:
+            file: invalid-no-requests.yaml
+            expect:
+              - check:
+                  ($error != null): true
