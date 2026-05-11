@@ -1,0 +1,44 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-wildcard-verbs
+spec:
+  steps:
+    - name: 01 - Apply policy
+      try:
+        - apply:
+            file: ../policy.yaml
+    - name: 02 - Wait for policy to be ready
+      try:
+        - assert:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: disallow-wildcard-verbs
+              status:
+                conditions:
+                  - reason: Succeeded
+                    status: "True"
+                    type: Ready
+    - name: 03 - ClusterRole with explicit verbs and resources should be admitted
+      try:
+        - apply:
+            file: valid-clusterrole.yaml
+            expect:
+              - check:
+                  ($error == null): true
+    - name: 04 - ClusterRole with wildcard verb should be blocked
+      try:
+        - apply:
+            file: invalid-wildcard-verb.yaml
+            expect:
+              - check:
+                  ($error != null): true
+    - name: 05 - ClusterRole with wildcard resource should be blocked
+      try:
+        - apply:
+            file: invalid-wildcard-resource.yaml
+            expect:
+              - check:
+                  ($error != null): true

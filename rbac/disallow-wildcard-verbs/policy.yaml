@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-wildcard-verbs
+  annotations:
+    policies.kyverno.io/title: Disallow Wildcard Verbs and Resources in RBAC
+    policies.kyverno.io/category: RBAC
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: ClusterRole, Role
+    kyverno.io/kyverno-version: "1.16.2"
+    kyverno.io/kubernetes-version: "1.34"
+    policies.kyverno.io/description: >-
+      Using wildcards (*) in RBAC verbs or resources grants overly broad permissions,
+      violating the principle of least privilege. This policy disallows ClusterRoles
+      and Roles from using * in either verbs or resources fields.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: disallow-wildcard-verbs
+      match:
+        any:
+          - resources:
+              kinds: [ClusterRole, Role]
+              operations: [CREATE, UPDATE]
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                !has(object.rules) || object.rules.all(rule,
+                  (!has(rule.verbs) || !rule.verbs.exists(v, v == '*')) &&
+                  (!has(rule.resources) || !rule.resources.exists(r, r == '*'))
+                )
+              message: "ClusterRoles and Roles must not use wildcard (*) in verbs or resources. Specify explicit permissions."
